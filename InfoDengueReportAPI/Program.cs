@@ -26,7 +26,7 @@ try
     builder.Services.AddScoped<IApiClient, ApiClient>();
     builder.Services.AddHttpClient<IApiClient, ApiClient>();
     builder.Services.AddDbContext<InfoDengueContext>(options =>
-        options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+        options.UseSqlite("Data Source=infodengue.db"));
 
     builder.Services.AddControllers();
 
