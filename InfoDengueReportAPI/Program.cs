@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using InfoDengueReportAPI.Data;
 using Serilog;
+using InfoDengueReportAPI.Services;
+using InfoDengueReportAPI.Services.Utils;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,27 +15,22 @@ Log.Logger = new LoggerConfiguration()
 
 builder.Host.UseSerilog();
 
+
+
 try
 {
     Log.Information("Iniciando a aplicação...");
-
+    builder.Services.AddScoped<IEpidemiologicalDataService, EpidemiologicalDataService>();
+    builder.Services.AddScoped<IReportProcessManagerService, ReportProcessManagerService>();
+    builder.Services.AddScoped<IReportService, ReportService>();
+    builder.Services.AddScoped<IApiClient, ApiClient>();
+    builder.Services.AddHttpClient<IApiClient, ApiClient>();
     builder.Services.AddDbContext<InfoDengueContext>(options =>
         options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
     builder.Services.AddControllers();
 
     var app = builder.Build();
-
-    if (app.Environment.IsDevelopment())
-    {
-        app.UseDeveloperExceptionPage();
-        Log.Information("Modo de desenvolvimento ativado.");
-    }
-    else
-    {
-        app.UseExceptionHandler("/Home/Error");
-        Log.Information("Modo de produção ativado.");
-    }
 
     app.UseHttpsRedirection();
 

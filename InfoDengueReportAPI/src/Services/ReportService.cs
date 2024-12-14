@@ -1,16 +1,17 @@
 using InfoDengueReportAPI.Models;
 using InfoDengueReportAPI.Services.Utils;
 using Microsoft.EntityFrameworkCore;
+using InfoDengueReportAPI.Data;
 
 namespace InfoDengueReportAPI.Services
 {
     public class ReportService : IReportService
     {
-        private readonly DbContext _dbContext;
+        private readonly InfoDengueContext _dbContext;
         private readonly IEpidemiologicalDataService _dataService;
         private readonly ILogger<ReportService> _logger;
 
-        public ReportService(DbContext dbContext, IEpidemiologicalDataService dataService, ILogger<ReportService> logger) 
+        public ReportService(InfoDengueContext dbContext, IEpidemiologicalDataService dataService, ILogger<ReportService> logger) 
         {
             _dbContext = dbContext;
             _dataService = dataService;

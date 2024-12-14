@@ -6,17 +6,15 @@ namespace InfoDengueReportAPI.Services
     public class EpidemiologicalDataService : IEpidemiologicalDataService
     {
         private readonly IApiClient _apiClient;
-        private readonly IGeocodeTranslator _geocodeTranslator;
         private const string ApiUrl = "https://info.dengue.mat.br/api/alertcity";
         private const int EwStart = 1;
         private const int EwEnd = 52;
         private const int EyStart = 1980;
         private const int EyEnd = 2024;
 
-        public EpidemiologicalDataService(IApiClient apiClient, IGeocodeTranslator geocodeTranslator)
+        public EpidemiologicalDataService(IApiClient apiClient)
         {
             _apiClient = apiClient;
-            _geocodeTranslator = geocodeTranslator;
         }
 
         public async Task<List<string>> GetAllEpidemiologicalDataAsync()
