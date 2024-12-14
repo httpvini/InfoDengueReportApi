@@ -12,6 +12,8 @@ namespace InfoDengueReportAPI.Models
         public string CodigoIBGE { get; set; }
         public string Municipio { get; set; }
         public int SolicitanteId { get; set; }
+        public double quantidadeDeCasosEstimados { get; set; }
+        public int notificacoes { get; set; }
         public Solicitante Solicitante { get; set; }
     }
 }

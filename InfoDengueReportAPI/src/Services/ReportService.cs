@@ -1,7 +1,7 @@
 using InfoDengueReportAPI.Models;
-using InfoDengueReportAPI.Services.Utils;
 using Microsoft.EntityFrameworkCore;
 using InfoDengueReportAPI.Data;
+using InfoDengueReportAPI.Services.Utils;
 
 namespace InfoDengueReportAPI.Services
 {
@@ -11,7 +11,7 @@ namespace InfoDengueReportAPI.Services
         private readonly IEpidemiologicalDataService _dataService;
         private readonly ILogger<ReportService> _logger;
 
-        public ReportService(InfoDengueContext dbContext, IEpidemiologicalDataService dataService, ILogger<ReportService> logger) 
+        public ReportService(InfoDengueContext dbContext, IEpidemiologicalDataService dataService, ILogger<ReportService> logger)
         {
             _dbContext = dbContext;
             _dataService = dataService;
@@ -19,7 +19,7 @@ namespace InfoDengueReportAPI.Services
         }
 
         public async Task<Solicitante> SaveSolicitanteAsync(string nome, string cpf)
-        {   
+        {
             _logger.LogInformation("Verificando se Solicitante já existe");
             var solicitante = await _dbContext.Set<Solicitante>()
                 .FirstOrDefaultAsync(s => s.Cpf == cpf);
@@ -35,67 +35,109 @@ namespace InfoDengueReportAPI.Services
             return solicitante;
         }
 
-        public async Task<Relatorio> SaveRelatorioAsync(string descricao, string arbovirose, int semanaInicio, int semanaFim, string codigoIBGE, string municipio, int solicitanteId)
+        public async Task<Relatorio> SaveRelatorioAsync(Relatorio relatorio)
         {
             _logger.LogInformation("Salvando Relatório");
-            var relatorio = new Relatorio
-            {
-                Descricao = descricao,
-                Arbovirose = arbovirose,
-                SemanaInicio = semanaInicio,
-                SemanaFim = semanaFim,
-                CodigoIBGE = codigoIBGE,
-                Municipio = municipio,
-                SolicitanteId = solicitanteId
-            };
 
             await _dbContext.Set<Relatorio>().AddAsync(relatorio);
             await _dbContext.SaveChangesAsync();
-            _logger.LogInformation($"Relatório '{descricao}' salvo com SolicitanteID '{solicitanteId}'.");
+            _logger.LogInformation($"Relatório salvo com SolicitanteID '{relatorio.SolicitanteId}'.");
 
             return relatorio;
         }
 
-        public async Task<List<string>> GetRelatorioFromApiAsync(string geoCode)
+        public async Task<List<Relatorio>> GetRelatorioFromApiAsync(string geoCode, string municipio)
         {
             _logger.LogInformation($"Buscando dados epidemiológicos para geocode '{geoCode}'");
-            return await _dataService.GetEpidemiologicalDataByGeocodeAsync(geoCode);
+            return await _dataService.GetEpidemiologicalDataByGeocodeAsync(geoCode, municipio);
         }
 
-        public async Task<Relatorio> ProcessRelatorioAsync(string nome, string cpf, string tipoBusca, string? geoCode = null, string? disease = null, int? ewStart = null, int? ewEnd = null, int? eyStart = null, int? eyEnd = null)
+        public async Task<List<Relatorio>> ProcessRelatorioAsync(string nome, string cpf, string tipoBusca, string? geoCode = null, string? disease = null, int? ewStart = null, int? ewEnd = null, int? eyStart = null, int? eyEnd = null, string? municipio = null)
         {
             var solicitante = await SaveSolicitanteAsync(nome, cpf);
-
+            List<Relatorio> relatorios = new List<Relatorio>();
             string descricao = "";
-            List<string> rawData = new();
 
             switch (tipoBusca.ToLower())
             {
                 case "geocode":
-                    _logger.LogInformation($"Buscando relatório por geocode '{geoCode}");
-                    if (geoCode == null) throw new ArgumentException("Geocode não fornecido para busca por geocode.");
-                    rawData = await GetRelatorioFromApiAsync(geoCode);
-                    descricao = $"Dados epidemiológicos para o município com geocode {geoCode}";
+                    _logger.LogInformation($"Buscando relatório por geocode '{geoCode}'");
+                    if (geoCode == null) throw new ArgumentException("Geocode ou municipio não fornecidos para busca por geocode.");
+                    relatorios = await GetRelatorioFromApiAsync(geoCode, GeocodeTranslator.GetMunicipio(geoCode));
+                    descricao = $"Dados epidemiológicos para o município {municipio} com geocode {geoCode}";
+
                     break;
 
                 case "total-casos-rj-sp":
-                    _logger.LogInformation("Buscando total de casos Rj e Sp");
-                    var totalCasesRJSP = await _dataService.GetTotalCasesInRJandSPAsync();
-                    rawData = totalCasesRJSP.SelectMany(tc => tc.Select(c => c.ToString())).ToList();
-                    descricao = "Total de casos epidemiológicos nos municípios do Rio de Janeiro e São Paulo";
+                    _logger.LogInformation("Buscando total de casos Rj e Sp por Arbovirose");
+                    var totalCasesByMunicipalityAndDisease = await _dataService.GetTotalCasesInRJandSPAsync();
+
+                    foreach (var municipioKvp in totalCasesByMunicipalityAndDisease)
+                    {
+                        municipio = municipioKvp.Key;
+                        var totalCasesByDisease = municipioKvp.Value;
+
+                        foreach (var diseaseKvp in totalCasesByDisease)
+                        {
+                            disease = diseaseKvp.Key;
+                            var totalCases = diseaseKvp.Value;
+
+                            relatorios.Add(new Relatorio
+                            {
+                                Municipio = municipio,
+                                quantidadeDeCasosEstimados = totalCases,
+                                Descricao = descricao,
+                                SolicitanteId = solicitante.Id,
+                                Arbovirose = disease, // Agora inclui a arbovirose
+                                CodigoIBGE = GeocodeTranslator.GetGeoCode(municipio),
+                                DataSolicitacao = DateTime.Now,
+                                SemanaFim = 0,
+                                SemanaInicio = 0
+                            });
+                        }
+                    }
+                    descricao = "Total de casos epidemiológicos nos municípios do Rio de Janeiro e São Paulo, discriminados por Arbovirose";
                     break;
 
                 case "arbovirose":
-                    _logger.LogInformation($"Buscando relatório customizado - gecode: '{geoCode} / arbovirose: '{disease}");
-                    if (geoCode == null || disease == null) throw new ArgumentException("Geocode ou arbovirose não fornecidos para busca por arbovirose.");
-                    rawData.Add(await _dataService.GetCustomEpidemiologicalDataAsync(geoCode, disease, ewStart ?? 1, ewEnd ?? 52, eyStart ?? 1980, eyEnd ?? 2024));
-                    descricao = $"Dados epidemiológicos para arbovirose {disease} no município {geoCode} entre as semanas {ewStart} e {ewEnd} de {eyStart} a {eyEnd}";
+                    _logger.LogInformation($"Buscando relatório customizado - arbovirose: '{disease}'");
+                    if (disease == null) throw new ArgumentException("arbovirose não fornecido para busca por arbovirose.");
+
+                    relatorios = await _dataService.GetCustomEpidemiologicalDataAsync(geoCode, disease, ewStart ?? 1, ewEnd ?? 52, eyStart ?? 2024, eyEnd ?? 2024, municipio);
+
+                    if (relatorios != null && relatorios.Any())
+                    {
+                        var relatoriosAgrupados = relatorios
+                        .GroupBy(r => new { r.Municipio, r.Arbovirose })
+                        .Select(g => new TotalCasesByMunicipilatyDto
+                        {
+                            Municipio = g.Key.Municipio,
+                            Doenca = g.Key.Arbovirose,
+                            TotalCasos = g.Sum(r => r.quantidadeDeCasosEstimados)
+                        })
+                        .ToList();
+        
+                        relatorios = relatoriosAgrupados.Select(dto => new Relatorio
+                        {
+                            Municipio = dto.Municipio,
+                            Arbovirose = dto.Doenca,
+                            quantidadeDeCasosEstimados = dto.TotalCasos,
+                            CodigoIBGE = GeocodeTranslator.GetGeoCode(dto.Municipio),
+                            DataSolicitacao = DateTime.Now,
+                            SemanaFim = 0,
+                            SemanaInicio = 0
+                        }).ToList();
+                    }
+                    else
+                    {
+                        return new List<Relatorio>();
+                    }
+                    descricao = $"Dados epidemiológicos agrupados por município e arbovirose para {disease}";
                     break;
 
                 case "municipios-rj-sp":
                     _logger.LogInformation("Buscando relatório total de dados de casos Rj e Sp");
-                    var allDataRJSP = await _dataService.GetAllEpidemiologicalDataAsync();
-                    rawData = allDataRJSP;
+                    relatorios = await _dataService.GetAllEpidemiologicalDataAsync();
                     descricao = "Dados epidemiológicos completos para os municípios do Rio de Janeiro e São Paulo";
                     break;
 
@@ -103,17 +145,16 @@ namespace InfoDengueReportAPI.Services
                     throw new ArgumentException("Tipo de busca inválido.");
             }
 
-            var relatorio = await SaveRelatorioAsync(
-                descricao: descricao,
-                arbovirose: disease ?? "",
-                semanaInicio: ewStart ?? 0,
-                semanaFim: ewEnd ?? 0,
-                codigoIBGE: geoCode ?? "",
-                municipio: geoCode != null ? GeocodeTranslator.GetMunicipio(geoCode) : "",
-                solicitanteId: solicitante.Id
-            );
 
-            return relatorio;
+            Relatorio? relatorioSalvo = null;
+            foreach (var relatorio in relatorios)
+            {
+                relatorio.Descricao = descricao;
+                relatorio.SolicitanteId = solicitante.Id;
+                relatorioSalvo = await SaveRelatorioAsync(relatorio);
+            }
+           
+            return relatorios;
         }
 
         public async Task<List<Solicitante>> GetSolicitantesAsync()

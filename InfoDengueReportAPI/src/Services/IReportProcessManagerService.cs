@@ -4,7 +4,7 @@ namespace InfoDengueReportAPI.Services
 {
     public interface IReportProcessManagerService
     {
-        Task<Relatorio> ProcessReportAsync(
+        Task<List<Relatorio>> ProcessReportAsync(
             string nomeSolicitante, 
             string cpfSolicitante, 
             string tipoBusca, 

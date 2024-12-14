@@ -47,6 +47,12 @@ namespace InfoDengueReportAPI.Migrations
                     b.Property<int>("SolicitanteId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int>("notificacoes")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double>("quantidadeDeCasosEstimados")
+                        .HasColumnType("REAL");
+
                     b.HasKey("Id");
 
                     b.HasIndex("SolicitanteId");

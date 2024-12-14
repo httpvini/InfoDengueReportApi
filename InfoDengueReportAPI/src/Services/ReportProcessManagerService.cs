@@ -11,7 +11,7 @@ namespace InfoDengueReportAPI.Services
             _relatorioService = relatorioService;
         }
 
-        public async Task<Relatorio> ProcessReportAsync(
+        public async Task<List<Relatorio>> ProcessReportAsync(
             string nomeSolicitante, 
             string cpfSolicitante, 
             string tipoBusca, 
@@ -25,7 +25,7 @@ namespace InfoDengueReportAPI.Services
             try
             {
 
-                var relatorio = await _relatorioService.ProcessRelatorioAsync(
+                List<Relatorio> relatorios = await _relatorioService.ProcessRelatorioAsync(
                     nome: nomeSolicitante,
                     cpf: cpfSolicitante,
                     tipoBusca: tipoBusca,
@@ -37,7 +37,7 @@ namespace InfoDengueReportAPI.Services
                     eyEnd: eyEnd
                 );
 
-                return relatorio;
+                return relatorios;
             }
             catch (Exception ex)
             {

@@ -11,8 +11,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace InfoDengueReportAPI.Migrations
 {
     [DbContext(typeof(InfoDengueContext))]
-    [Migration("20241214155654_CreateSolicitantesTable")]
-    partial class CreateSolicitantesTable
+    [Migration("20241214182643_AddNotificacoesToRelatorios")]
+    partial class AddNotificacoesToRelatorios
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -49,6 +49,12 @@ namespace InfoDengueReportAPI.Migrations
 
                     b.Property<int>("SolicitanteId")
                         .HasColumnType("INTEGER");
+
+                    b.Property<int>("notificacoes")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double>("quantidadeDeCasosEstimados")
+                        .HasColumnType("REAL");
 
                     b.HasKey("Id");
 

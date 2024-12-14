@@ -3,8 +3,8 @@ public static class GeocodeTranslator
 {
     public static string GetMunicipio(string geocode) => geocode switch
     {
-        "3304557" => "Rio de Janeiro",
-        "3550308" => "São Paulo",
+        "3304557" => "rio_de_janeiro",
+        "3550308" => "sao_paulo",
         _ => throw new ArgumentException($"Geocode {geocode} não encontrado.")
     };
 

@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace InfoDengueReportAPI.Migrations
 {
     /// <inheritdoc />
-    public partial class CreateSolicitantesTable : Migration
+    public partial class AddNotificacoesToRelatorios : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -37,7 +37,9 @@ namespace InfoDengueReportAPI.Migrations
                     SemanaFim = table.Column<int>(type: "INTEGER", nullable: false),
                     CodigoIBGE = table.Column<string>(type: "TEXT", nullable: false),
                     Municipio = table.Column<string>(type: "TEXT", nullable: false),
-                    SolicitanteId = table.Column<int>(type: "INTEGER", nullable: false)
+                    SolicitanteId = table.Column<int>(type: "INTEGER", nullable: false),
+                    quantidadeDeCasosEstimados = table.Column<double>(type: "REAL", nullable: false),
+                    notificacoes = table.Column<int>(type: "INTEGER", nullable: false)
                 },
                 constraints: table =>
                 {

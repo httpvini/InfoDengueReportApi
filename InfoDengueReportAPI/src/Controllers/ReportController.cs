@@ -1,3 +1,4 @@
+using InfoDengueReportAPI.Models;
 using InfoDengueReportAPI.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -40,7 +41,7 @@ namespace InfoDengueReportAPI.Controllers
                 var relatorio = await _reportProcessManagerService.ProcessReportAsync(
                     nomeSolicitante, 
                     cpfSolicitante, 
-                    tipoBusca: "by-ibge-code", 
+                    tipoBusca: "geocode",
                     geoCode: codigoIBGE
                 );
                 return Ok(relatorio);
@@ -52,41 +53,85 @@ namespace InfoDengueReportAPI.Controllers
         }
 
         [HttpGet("total-cases/rj-sp")]
-        public async Task<IActionResult> GetTotalCasesForRJAndSP([FromQuery] string nomeSolicitante, [FromQuery] string cpfSolicitante)
+        public async Task<ActionResult<List<TotalCasesByMunicipilatyDto>>> GetTotalCasesForRJAndSP(
+        [FromQuery] string nomeSolicitante, 
+        [FromQuery] string cpfSolicitante)
         {
             try
             {
-                var relatorio = await _reportProcessManagerService.ProcessReportAsync(
-                    nomeSolicitante, 
-                    cpfSolicitante, 
+                var relatorios = await _reportProcessManagerService.ProcessReportAsync(
+                    nomeSolicitante,
+                    cpfSolicitante,
                     tipoBusca: "total-casos-rj-sp"
                 );
-                return Ok(relatorio);
+
+                if (relatorios == null || relatorios.Count == 0)
+                {
+                    return NotFound("Nenhum relatório encontrado.");
+                }
+
+                var totalCasosPorMunicipioEDoenca = relatorios
+                    .GroupBy(r => new { r.Municipio, r.Arbovirose })
+                    .Select(g => new TotalCasesByMunicipilatyDto
+                    {
+                        Municipio = g.Key.Municipio,
+                        Doenca = g.Key.Arbovirose,
+                        TotalCasos = g.Sum(r => r.quantidadeDeCasosEstimados)
+                    })
+                    .ToList();
+
+                return Ok(totalCasosPorMunicipioEDoenca);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
             }
             catch (Exception ex)
             {
-                return StatusCode(500, $"Erro ao buscar dados: {ex.Message}");
+                return StatusCode(500, "Erro interno do servidor.");
             }
         }
 
-        [HttpGet("total-cases/by-disease")]
-        public async Task<IActionResult> GetTotalCasesByDisease([FromQuery] string arbovirose, [FromQuery] string nomeSolicitante, [FromQuery] string cpfSolicitante)
+        [HttpGet("total-cases/by-arbovirose")]
+        public async Task<ActionResult<List<TotalCasesByMunicipilatyDto>>> GetTotalCasesByArbovirose(
+            [FromQuery] string arbovirose,
+            [FromQuery] string nomeSolicitante,
+            [FromQuery] string cpfSolicitante
+        )
         {
             try
             {
-                var relatorio = await _reportProcessManagerService.ProcessReportAsync(
-                    nomeSolicitante, 
-                    cpfSolicitante, 
-                    tipoBusca: "total-casos-by-disease", 
+                var relatorios = await _reportProcessManagerService.ProcessReportAsync(
+                    nomeSolicitante,
+                    cpfSolicitante,
+                    tipoBusca: "arbovirose",
                     disease: arbovirose
                 );
-                return Ok(relatorio);
+    
+                if (relatorios == null || !relatorios.Any())
+                {
+                    return NotFound("Nenhum relatório encontrado.");
+                }
+
+                var relatoriosDto = relatorios.Select(r => new TotalCasesByMunicipilatyDto
+                {
+                    Municipio = r.Municipio,
+                    Doenca = r.Arbovirose,
+                    TotalCasos = r.quantidadeDeCasosEstimados
+                }).ToList();
+
+                return Ok(relatoriosDto);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
             }
             catch (Exception ex)
             {
-                return StatusCode(500, $"Erro ao buscar dados: {ex.Message}");
+                return StatusCode(500, "Erro interno do servidor.");
             }
-        }
+        }   
+
 
         [HttpGet("solicitantes")]
         public async Task<IActionResult> GetSolicitantes()
